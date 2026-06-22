@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   VeriFlow — "The Seal", command-center revision.
+   Living cryptographic substrate: graphite depth, warm bone, antique verdigris,
+   electric signal violet. Motion and glow, never flat.
+   ========================================================================= */
+
+:root {
+  /* hex (for direct CSS use) */
+  --ink: #0a0c12;
+  --surface: #14181f;
+  --surface-raised: #181d26;
+  --hairline: #2a2c33;
+  --bone: #efeae0;
+  --muted: #8c8a86;
+  --faint: #5c5a56;
+  --gold: #c5a46e;
+  --bronze: #b8976e;
+  /* semantic tokens repointed into the warm "Seal" family (no green/violet) */
+  --signal: #a98a5e;
+  --verdigris: #c5a46e;
+  --amber: #d8b36a;
+  --alert: #c97b6a;
+
+  /* rgb channels (for tailwind alpha + glows) */
+  --ink-rgb: 10 12 18;
+  --surface-rgb: 20 24 31;
+  --raised-rgb: 24 29 38;
+  --hairline-rgb: 42 44 51;
+  --bone-rgb: 239 234 224;
+  --muted-rgb: 140 138 134;
+  --faint-rgb: 92 90 86;
+  --gold-rgb: 197 164 110;
+  --bronze-rgb: 184 151 110;
+  --signal-rgb: 169 138 94;
+  --verdigris-rgb: 197 164 110;
+  --amber-rgb: 216 179 106;
+  --alert-rgb: 201 123 106;
+}
+
+* { border-color: rgb(var(--hairline-rgb)); }
+
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+body {
+  background-color: var(--ink);
+  color: var(--bone);
+  font-feature-settings: "ss01", "cv01";
+  overflow-x: hidden;
+}
+
+.font-display { font-optical-sizing: auto; letter-spacing: -0.02em; }
+
+.crypto {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  word-break: break-all;
+}
+
+.eyebrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@layer components {
+  /* Glass surface with gradient hairline + soft inner light */
+  .glass {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgb(var(--raised-rgb) / 0.7), rgb(var(--surface-rgb) / 0.55));
+    backdrop-filter: blur(12px);
+    border: 1px solid rgb(var(--bone-rgb) / 0.08);
+    box-shadow: 0 1px 0 0 rgb(var(--bone-rgb) / 0.05) inset, 0 24px 60px -34px rgb(0 0 0 / 0.8);
+  }
+  .glass-hover { transition: border-color .3s, transform .3s, box-shadow .3s; }
+  .glass-hover:hover {
+    border-color: rgb(var(--bone-rgb) / 0.16);
+    transform: translateY(-2px);
+    box-shadow: 0 30px 70px -32px rgb(0 0 0 / 0.85);
+  }
+
+  /* Accent gradient text */
+  .gradient-text {
+    background: linear-gradient(100deg, var(--bone) 0%, var(--verdigris) 55%, var(--signal) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Hairline divider that fades at the ends */
+  .rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(var(--hairline-rgb)) 18%, rgb(var(--hairline-rgb)) 82%, transparent);
+  }
+
+  /* Console panel for the agent reasoning */
+  .console {
+    background:
+      radial-gradient(120% 100% at 0% 0%, rgb(var(--signal-rgb) / 0.06), transparent 50%),
+      linear-gradient(180deg, rgb(10 12 16 / 0.9), rgb(8 10 14 / 0.92));
+    border: 1px solid rgb(var(--bone-rgb) / 0.08);
+    box-shadow: 0 30px 80px -40px rgb(0 0 0 / 0.9);
+  }
+}
+
+@layer utilities {
+  .grain::after {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none; z-index: 1;
+    opacity: 0.035; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .text-glow-verdigris { text-shadow: 0 0 18px rgb(var(--verdigris-rgb) / 0.55); }
+  .text-glow-signal { text-shadow: 0 0 18px rgb(var(--signal-rgb) / 0.55); }
+}
+
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; border-radius: 2px; }
+::selection { background: color-mix(in srgb, var(--verdigris) 35%, transparent); color: var(--bone); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--ink); }
+::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 999px; border: 2px solid var(--ink); }
+::-webkit-scrollbar-thumb:hover { background: var(--faint); }
