@@ -39,5 +39,8 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9.18.0",
     "eslint-config-next": "15.3.9"
-  }
+  },
+  "browserslist": [
+    "defaults"
+  ]
 }
