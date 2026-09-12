@@ -7,7 +7,7 @@ export default function AgentRedirect() {
   const params = useParams();
   const router = useRouter();
   useEffect(() => {
-    router.replace(`/?agent=${String(params.id)}&stage=identity`);
+    router.replace(`/agents?agent=${String(params.id)}&stage=identity`);
   }, [params.id, router]);
   return <div className="py-20 text-center text-faint">Opening agent…</div>;
 }

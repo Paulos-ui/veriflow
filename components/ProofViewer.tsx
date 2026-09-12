@@ -27,13 +27,12 @@ export function ProofViewer({ attestation }: { attestation: Attestation }) {
       initial={{ opacity: 0, y: 18, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 240, damping: 22 }}
-      className="console relative overflow-hidden rounded-card p-6 shadow-glow-verdigris"
+      className="console relative overflow-hidden rounded-card border border-verdigris/25 p-6"
     >
-      <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-verdigris/20 blur-3xl" />
       <div className="relative flex items-center gap-5">
         <Seal state="verified" size={76} />
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-eyebrow text-verdigris text-glow-verdigris">
+          <p className="font-mono text-[11px] uppercase tracking-eyebrow text-verdigris">
             Attested by Terminal 3
           </p>
           <h3 className="mt-1 font-display text-xl text-bone">Action verified in TEE</h3>

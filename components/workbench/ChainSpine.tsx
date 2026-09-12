@@ -54,7 +54,7 @@ export function ChainSpine({
                     : "border-hairline group-hover:border-faint"
                 )}
               >
-                {isCurrent && <span className="absolute inset-0 rounded-full bg-gold/15 animate-pulse-glow" />}
+                {isCurrent && <span className="absolute inset-0 rounded-full bg-gold/15 animate-pending-pulse" />}
                 {isDone ? (
                   <Check size={15} className="relative text-gold" />
                 ) : (

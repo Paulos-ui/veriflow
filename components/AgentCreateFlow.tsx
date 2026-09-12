@@ -245,7 +245,7 @@ export function AgentCreateFlow() {
                 </dl>
 
                 <div className="relative mt-5 flex items-center justify-center gap-2">
-                  <span className="h-1 w-1 rounded-full bg-gold animate-pulse-glow" />
+                  <span className="h-1 w-1 rounded-full bg-gold" />
                   <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-gold/80">
                     Attested by Terminal 3 · TEE
                   </span>

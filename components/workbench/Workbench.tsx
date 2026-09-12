@@ -33,7 +33,7 @@ export function Workbench() {
   // keep the URL in sync for deep-linking / demo bookmarks (no navigation)
   useEffect(() => {
     if (!focusId) return;
-    window.history.replaceState(null, "", `/?agent=${focusId}&stage=${stage}`);
+    window.history.replaceState(null, "", `/agents?agent=${focusId}&stage=${stage}`);
   }, [focusId, stage]);
 
   const agent = agents.find((a) => a.id === focusId) ?? agents[0] ?? null;

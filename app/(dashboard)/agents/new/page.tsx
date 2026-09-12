@@ -5,8 +5,8 @@ import { AgentCreateFlow } from "@/components/AgentCreateFlow";
 export default function NewAgentPage() {
   return (
     <div className="space-y-10">
-      <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted hover:text-bone">
-        <ArrowLeft size={15} /> Overview
+      <Link href="/agents" className="inline-flex items-center gap-2 text-sm text-muted hover:text-bone">
+        <ArrowLeft size={15} /> Registry
       </Link>
       <header>
         <p className="eyebrow mb-2">Provision</p>

@@ -28,6 +28,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+ui-ux-pro-max-skill/
+# local design skill — do not commit
+.skills/
+ui-ux-pro-max-skill/
 
 # vercel
 .vercel

@@ -1,14 +1,17 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
+// The seal object. Struck from gold — that is its material, not its status
+// (MASTER.md §2.4). State is expressed by hue on the ring and by the verify
+// ripple, which fires exactly once, on transition to verified.
 type SealState = "idle" | "pending" | "verifying" | "verified";
 
 const COLORS: Record<SealState, string> = {
-  idle: "#5C5A56",
-  pending: "#D8B36A",
-  verifying: "#D8B36A",
-  verified: "#C5A46E",
+  idle: "var(--faint)",
+  pending: "var(--amber)",
+  verifying: "var(--amber)",
+  verified: "var(--verdigris)",
 };
 
 export function Seal({
@@ -18,6 +21,7 @@ export function Seal({
   state?: SealState;
   size?: number;
 }) {
+  const reduced = useReducedMotion();
   const color = COLORS[state];
   const verified = state === "verified";
   const verifying = state === "verifying";
@@ -25,7 +29,7 @@ export function Seal({
   return (
     <div style={{ position: "relative", width: size, height: size }}>
       <AnimatePresence>
-        {verified && (
+        {verified && !reduced && (
           <motion.span
             key="ripple"
             initial={{ scale: 0.6, opacity: 0.5 }}
@@ -49,11 +53,11 @@ export function Seal({
         aria-label={`Attestation seal: ${state}`}
         initial={false}
         animate={
-          verified
+          verified && !reduced
             ? { scale: [1.16, 0.96, 1], rotate: [-6, 1, 0] }
             : { scale: 1, rotate: 0 }
         }
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: reduced ? 0 : 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
         {/* bezel ticks — precision instrument, not wax */}
         <g stroke={color} strokeWidth="0.75" opacity={0.85}>
@@ -76,7 +80,7 @@ export function Seal({
           strokeWidth={verified ? 1.4 : 1}
           strokeDasharray={state === "pending" || verifying ? "2 6" : undefined}
         >
-          {verifying && (
+          {verifying && !reduced && (
             <animateTransform
               attributeName="transform"
               type="rotate"
@@ -88,7 +92,7 @@ export function Seal({
           )}
         </circle>
         {/* engraved inner edge */}
-        <circle cx="48.6" cy="48.8" r="38" fill="none" stroke="#0C0E13" strokeWidth="0.5" opacity="0.45" />
+        <circle cx="48.6" cy="48.8" r="38" fill="none" stroke="var(--ink)" strokeWidth="0.5" opacity="0.45" />
         <circle cx="48" cy="48" r="27" fill="none" stroke={color} strokeWidth="0.75" opacity="0.5" />
 
         {verified ? (
@@ -99,9 +103,9 @@ export function Seal({
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            initial={{ pathLength: 0 }}
+            initial={reduced ? false : { pathLength: 0 }}
             animate={{ pathLength: 1 }}
-            transition={{ duration: 0.5, delay: 0.25, ease: "easeOut" }}
+            transition={{ duration: reduced ? 0 : 0.5, delay: reduced ? 0 : 0.25, ease: "easeOut" }}
           />
         ) : (
           <circle cx="48" cy="48" r="4" fill={color} opacity={0.9} />

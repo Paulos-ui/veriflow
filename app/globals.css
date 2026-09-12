@@ -3,42 +3,50 @@
 @tailwind utilities;
 
 /* ============================================================================
-   VeriFlow — "The Seal", command-center revision.
-   Living cryptographic substrate: graphite depth, warm bone, antique verdigris,
-   electric signal violet. Motion and glow, never flat.
+   VeriFlow — "The Seal".
+   See design-system/veriflow/MASTER.md — that file is authoritative.
+
+   Four state hues, each with exactly one meaning, plus gold as the seal's
+   physical metal (brand, never state). Contrast ratios against --ink are noted
+   per token; all state colours clear WCAG AA for normal text.
    ========================================================================= */
 
 :root {
-  /* hex (for direct CSS use) */
+  /* --- substrate: three depths, no more ------------------------------- */
   --ink: #0a0c12;
-  --surface: #14181f;
-  --surface-raised: #181d26;
-  --hairline: #2a2c33;
-  --bone: #efeae0;
-  --muted: #8c8a86;
-  --faint: #5c5a56;
-  --gold: #c5a46e;
+  --surface: #141821;
+  --surface-raised: #1a1f2a;
+  --hairline: #2a2e38;
+
+  /* --- text ------------------------------------------------------------ */
+  --bone: #efeae0;   /* 16.3:1 — primary */
+  --muted: #9a968e;  /*  6.6:1 — secondary */
+  --faint: #6b6760;  /*  3.5:1 — UI furniture ONLY, never body text */
+
+  /* --- state: the load-bearing four ------------------------------------ */
+  --verdigris: #4fb09a; /* 7.5:1 — verified / allowed */
+  --amber: #e0a64b;     /* 9.1:1 — awaiting / gate open */
+  --signal: #9b8cff;    /* 7.1:1 — identity: DIDs, keys, agents */
+  --alert: #e07a5f;     /* 6.6:1 — refused / chain stopped */
+
+  /* --- metal: brand only, NOT a state ---------------------------------- */
+  --gold: #c5a46e;      /* 8.3:1 — the seal is struck from this */
   --bronze: #b8976e;
-  /* semantic tokens repointed into the warm "Seal" family (no green/violet) */
-  --signal: #a98a5e;
-  --verdigris: #c5a46e;
-  --amber: #d8b36a;
-  --alert: #c97b6a;
 
   /* rgb channels (for tailwind alpha + glows) */
   --ink-rgb: 10 12 18;
-  --surface-rgb: 20 24 31;
-  --raised-rgb: 24 29 38;
-  --hairline-rgb: 42 44 51;
+  --surface-rgb: 20 24 33;
+  --raised-rgb: 26 31 42;
+  --hairline-rgb: 42 46 56;
   --bone-rgb: 239 234 224;
-  --muted-rgb: 140 138 134;
-  --faint-rgb: 92 90 86;
+  --muted-rgb: 154 150 142;
+  --faint-rgb: 107 103 96;
+  --verdigris-rgb: 79 176 154;
+  --amber-rgb: 224 166 75;
+  --signal-rgb: 155 140 255;
+  --alert-rgb: 224 122 95;
   --gold-rgb: 197 164 110;
   --bronze-rgb: 184 151 110;
-  --signal-rgb: 169 138 94;
-  --verdigris-rgb: 197 164 110;
-  --amber-rgb: 216 179 106;
-  --alert-rgb: 201 123 106;
 }
 
 * { border-color: rgb(var(--hairline-rgb)); }
@@ -58,7 +66,11 @@ body {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  word-break: break-all;
+  /* `anywhere`, not `break-all`: a 64-char hash reflows inside its column, but
+     ordinary words in the same run (tool names, vendor names) still break at
+     sensible points. break-all would hyphenate "Aurora Systems" mid-word. */
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
 }
 
 .eyebrow {
@@ -86,9 +98,9 @@ body {
     box-shadow: 0 30px 70px -32px rgb(0 0 0 / 0.85);
   }
 
-  /* Accent gradient text */
+  /* Accent text — struck metal, not a state colour. */
   .gradient-text {
-    background: linear-gradient(100deg, var(--bone) 0%, var(--verdigris) 55%, var(--signal) 100%);
+    background: linear-gradient(100deg, var(--bone) 0%, var(--gold) 60%, var(--bronze) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -103,7 +115,7 @@ body {
   /* Console panel for the agent reasoning */
   .console {
     background:
-      radial-gradient(120% 100% at 0% 0%, rgb(var(--signal-rgb) / 0.06), transparent 50%),
+      radial-gradient(120% 100% at 0% 0%, rgb(var(--signal-rgb) / 0.05), transparent 50%),
       linear-gradient(180deg, rgb(10 12 16 / 0.9), rgb(8 10 14 / 0.92));
     border: 1px solid rgb(var(--bone-rgb) / 0.08);
     box-shadow: 0 30px 80px -40px rgb(0 0 0 / 0.9);
@@ -117,13 +129,17 @@ body {
     opacity: 0.035; mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  .text-glow-verdigris { text-shadow: 0 0 18px rgb(var(--verdigris-rgb) / 0.55); }
-  .text-glow-signal { text-shadow: 0 0 18px rgb(var(--signal-rgb) / 0.55); }
+  /* Identity material — DIDs, pubkeys, credential ids. */
+  .text-identity { color: var(--signal); }
 }
 
+/* Focus: violet outline, never removed, never colour-only (2px offset ring). */
 :focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; border-radius: 2px; }
-::selection { background: color-mix(in srgb, var(--verdigris) 35%, transparent); color: var(--bone); }
+::selection { background: rgb(var(--verdigris-rgb) / 0.3); color: var(--bone); }
 
+/* Reduced motion: rings take their FINAL geometry instantly rather than
+   animating faster — state must never be carried by the transition alone.
+   See MASTER.md §4.6. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

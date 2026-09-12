@@ -11,7 +11,7 @@ export function SealMark({ size = 52, active = true }: { size?: number; active?:
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label="attestation seal">
       {/* emboss shadow (offset dark) */}
-      <circle cx="32.7" cy="33" r="29" fill="none" stroke="#05060a" strokeWidth="1.4" opacity="0.6" />
+      <circle cx="32.7" cy="33" r="29" fill="none" stroke="var(--ink)" strokeWidth="1.4" opacity="0.6" />
       {/* outer ring */}
       <circle cx="32" cy="32" r="29" fill="none" stroke={gold} strokeWidth="1.1" opacity="0.9" />
       {/* top highlight arc */}
@@ -42,7 +42,7 @@ export function SealMark({ size = 52, active = true }: { size?: number; active?:
 
       {/* inner engraved ring */}
       <circle cx="32" cy="32" r="16.5" fill="none" stroke={gold} strokeWidth="0.8" opacity="0.55" />
-      <circle cx="32" cy="32" r="16.5" fill="none" stroke="#05060a" strokeWidth="0.5" opacity="0.4" transform="translate(0.5,0.6)" />
+      <circle cx="32" cy="32" r="16.5" fill="none" stroke="var(--ink)" strokeWidth="0.5" opacity="0.4" transform="translate(0.5,0.6)" />
 
       {/* center boss — a struck monogram mark */}
       <g>

@@ -180,7 +180,7 @@ export function WorkflowRunner({
             <span className="crypto text-[11px] uppercase tracking-eyebrow text-muted">
               {agent.name} · reasoning console
             </span>
-            {thinking && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-signal animate-pulse-glow" />}
+            {thinking && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-signal animate-pending-pulse" />}
           </div>
           <div ref={scrollRef} className="max-h-72 overflow-y-auto px-4 py-3.5">
             <div className="space-y-1.5">
