@@ -263,6 +263,14 @@ export default function ReliabilityPage() {
             action, nothing fakes a pass. A refused payment is never rendered as a
             successful one.
           </p>
+          <p className="mt-4 max-w-2xl text-[14px] leading-relaxed text-muted">
+            Which mode you get is decided by credentials, and the workspace says so
+            before you run anything: each app shows its mode and the agent holding
+            its key. The one asymmetry is deliberate — if an app is configured and
+            the link is broken, the case fails closed with a reason rather than
+            quietly serving a recorded response. Falling back there would let a real
+            payment ride on evidence that was never real.
+          </p>
         </section>
 
         <div className="rule" />
@@ -272,7 +280,7 @@ export default function ReliabilityPage() {
           <h2 className="font-display text-2xl text-bone">How it is verified</h2>
           <div className="mt-6 space-y-4 text-[14px] leading-relaxed text-muted">
             <p>
-              105 tests across 30 suites, run with the platform test runner and no
+              113 tests across 32 suites, run with the platform test runner and no
               mocking framework. The suites that carry the most weight are the deny
               paths: each refusal kind is exercised against a real mandate, and the
               tamper tests edit a sealed hop and assert that verification fails at that

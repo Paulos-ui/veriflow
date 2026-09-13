@@ -4,6 +4,7 @@ import type { Case } from "@/lib/cases/model";
 import type { HopAttempt } from "@/lib/cases/machine";
 import { createCase, rule, refuse, complete, withInvoice } from "@/lib/cases/machine";
 import { ROSTER, defaultMandates } from "@/lib/agents/roster";
+import { approvalChannel } from "@/lib/agents/channel";
 import { nowSecs } from "@/lib/mandate/model";
 import { runTool } from "@/lib/tools/runner";
 import { planCase } from "@/lib/agents/orchestrator";
@@ -29,7 +30,10 @@ import { fixtureFor } from "@/lib/tools/fixtures";
 // A refusal is a normal, recorded outcome, not an exception.
 // =============================================================================
 
-const CHANNEL = "C07APCLERK01";
+// The approval channel is resolved once, here, and handed to BOTH the mandate
+// that allowlists it and the calls that target it. One value, so a real channel
+// id cannot make a correct post look like a scope violation.
+const CHANNEL = approvalChannel();
 const LABEL = "INBOX/Invoices";
 const APPROVAL_WINDOW_SECS = 120;
 
@@ -44,7 +48,7 @@ export async function runApClerkCase(opts: RunOptions = {}): Promise<Case> {
   const invoiceKey = opts.invoiceKey ?? "aurora";
   const fixture = fixtureFor(invoiceKey);
   const at = nowSecs();
-  const mandates = defaultMandates(at - 60);
+  const mandates = defaultMandates(at - 60, { approvalChannel: CHANNEL });
 
   let kase = createCase(
     `case_${randomUUID().slice(0, 8)}`,

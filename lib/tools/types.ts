@@ -57,6 +57,36 @@ export interface ToolResult<O = unknown> {
 
 export type ToolExecutor<I = unknown, O = unknown> = (input: I) => Promise<ToolResult<O>>;
 
+/**
+ * Raised by an adapter that cannot honestly run: the operator asked for a live
+ * connection and it is missing, expired, or revoked.
+ *
+ * This is the one place VeriFlow uses a throw to express a refusal, and only
+ * because an adapter's return type is a ToolResult — it has no channel for
+ * "I did not run". The runner catches it at the boundary and converts it into
+ * an `adapter_unavailable` refusal VALUE before anything else sees it, so the
+ * property "refusals are values" still holds everywhere above the adapter.
+ *
+ * It exists so a broken Gmail link FAILS CLOSED with a reason on the record
+ * instead of silently serving a recorded invoice as though it were real mail.
+ */
+export class AdapterUnavailable extends Error {
+  /** Machine-readable reason, e.g. "gmail_not_connected". */
+  readonly reason: string;
+  /** What the operator would have to do about it. */
+  readonly remedy: string;
+  /** Evidence row heading in the why-blocked panel. "Connection" fits most. */
+  readonly label: string;
+
+  constructor(reason: string, message: string, remedy: string, label = "Connection") {
+    super(message);
+    this.name = "AdapterUnavailable";
+    this.reason = reason;
+    this.remedy = remedy;
+    this.label = label;
+  }
+}
+
 /** Helper so descriptors keep their input type without restating it. */
 export function describeTool<I>(d: ToolDescriptor<I>): ToolDescriptor<I> {
   return d;

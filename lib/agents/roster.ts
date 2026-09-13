@@ -71,7 +71,29 @@ export function roleForKey(pubkey: string): AgentRole | undefined {
 
 const HOUR = 3600;
 
-export function defaultMandates(issuedAt: number): Record<AgentRole, Mandate> {
+/**
+ * The demo approval channel.
+ *
+ * A literal, not an env read: this module is the policy layer and stays pure so
+ * it can be imported anywhere and reasoned about on its face. When a real
+ * workspace is wired up, lib/agents/channel.ts resolves SLACK_CHANNEL_ID and
+ * passes it in through `opts.approvalChannel` below — the allowlist and the
+ * channel the poster targets then come from one value, so a live channel id can
+ * never make a correct post look like a scope violation.
+ */
+const DEMO_APPROVAL_CHANNEL = "C07APCLERK01";
+
+export interface MandateOptions {
+  /** The one channel the comms poster may use. Injected, never read from env. */
+  approvalChannel?: string;
+}
+
+export function defaultMandates(
+  issuedAt: number,
+  opts: MandateOptions = {}
+): Record<AgentRole, Mandate> {
+  const approvalChannel = opts.approvalChannel || DEMO_APPROVAL_CHANNEL;
+
   const common = {
     version: 1,
     notBeforeSecs: issuedAt,
@@ -111,7 +133,7 @@ export function defaultMandates(issuedAt: number): Record<AgentRole, Mandate> {
       id: "mnd_comms_poster",
       agentPubkey: ROSTER["comms.poster"].agentPubkey,
       functions: ["slack.post_proposal", "slack.await_approval", "slack.post_proof"],
-      scopes: { slackChannels: ["C07APCLERK01"] },
+      scopes: { slackChannels: [approvalChannel] },
       batchCapCents: 0,
     },
     "pay.clerk": {

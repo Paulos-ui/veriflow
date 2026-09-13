@@ -6,8 +6,7 @@ import {
   createDecipheriv,
   createHash,
 } from "node:crypto";
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { readStore, writeStore } from "@/lib/storage/root";
 
 // =============================================================================
 // Self-custody keystore (Option A), SERVER-ONLY.
@@ -21,14 +20,14 @@ import path from "node:path";
 // absent we derive a deterministic dev KEK so the demo runs — NEVER do that in
 // production (a warning is logged once).
 //
-// Persistence is pluggable. The default file store writes to ./.data/keys.json
-// (git-ignored). Swap `store` for a DB-backed implementation in production;
-// nothing else changes. Note: serverless filesystems are ephemeral — wire a
-// real DB before relying on persistence across deploys.
+// Persistence is pluggable. The default store writes keys.json inside
+// lib/storage/root.ts's writable root (git-ignored locally, /tmp on Vercel).
+// Swap `store` for a DB-backed implementation in production; nothing else
+// changes. Note: serverless filesystems are ephemeral — wire a real DB before
+// relying on persistence across deploys.
 // =============================================================================
 
-const KEY_DIR = path.join(process.cwd(), ".data");
-const KEY_FILE = path.join(KEY_DIR, "keys.json");
+const KEY_FILE = "keys.json";
 
 let warnedDevKek = false;
 
@@ -62,21 +61,15 @@ interface KeyStore {
 
 const fileStore: KeyStore = {
   async get(pubkey) {
-    try {
-      const data = JSON.parse(await fs.readFile(KEY_FILE, "utf8")) as Record<string, EncryptedKey>;
-      return data[pubkey] ?? null;
-    } catch {
-      return null;
-    }
+    const data = await readStore<Record<string, EncryptedKey>>(KEY_FILE, {});
+    return data[pubkey] ?? null;
   },
   async put(rec) {
-    await fs.mkdir(KEY_DIR, { recursive: true });
-    let data: Record<string, EncryptedKey> = {};
-    try {
-      data = JSON.parse(await fs.readFile(KEY_FILE, "utf8"));
-    } catch {}
+    const data = await readStore<Record<string, EncryptedKey>>(KEY_FILE, {});
     data[rec.pubkey] = rec;
-    await fs.writeFile(KEY_FILE, JSON.stringify(data, null, 2), { mode: 0o600 });
+    // 0600: the ciphertext is useless without the KEK, but there is no reason
+    // to leave it world-readable either.
+    await writeStore(KEY_FILE, data, { mode: 0o600 });
   },
 };
 

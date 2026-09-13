@@ -5,6 +5,7 @@ import type { Ruling } from "@/lib/mandate/refusal";
 import { deny } from "@/lib/mandate/refusal";
 import { descriptorFor } from "./registry";
 import type { Provenance, ToolResult } from "./types";
+import { AdapterUnavailable } from "./types";
 
 // =============================================================================
 // The runner: the ONLY path from a tool name to a side effect.
@@ -106,8 +107,26 @@ export async function runTool(req: RunRequest): Promise<RunOutcome> {
     };
   }
 
-  const result = await execute(parsed.data as never);
-  return { ok: true, result };
+  const result = await execute(parsed.data as never).catch((err: unknown) => {
+    // An adapter that cannot honestly run says so, and the runner turns that
+    // into a refusal value here — the one conversion point, so nothing above
+    // this line ever sees a refusal expressed as an exception.
+    if (err instanceof AdapterUnavailable) {
+      return {
+        __refused: deny("adapter_unavailable", err.message, {
+          evidence: { label: err.label, allowed: "a live link", attempted: err.reason },
+          remedy: err.remedy,
+        }),
+      } as const;
+    }
+    throw err; // A genuine bug. Never dressed up as a policy outcome.
+  });
+
+  if (result && typeof result === "object" && "__refused" in result) {
+    return { ok: false, ruling: result.__refused };
+  }
+
+  return { ok: true, result: result as ToolResult<unknown> };
 }
 
 export type { Provenance };

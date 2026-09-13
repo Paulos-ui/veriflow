@@ -94,6 +94,48 @@ whether its own credentials are present, and labels the hop accordingly:
 
 A `SIMULATED` payment is never styled as a completed one.
 
+The workspace opens with a **connection row** — Gmail, Slack, Stripe, each with
+the agent that holds its credential and a `LIVE` or `FIXTURE` badge. It reads the
+same resolution the adapters use, so the row cannot claim a link the run will not
+actually take.
+
+### Connecting the apps
+
+Every app is optional and independent. Connect one, two, or all three.
+
+**Gmail** — create an OAuth 2.0 Client ID (Web application) in Google Cloud
+Console, enable the Gmail API, and register the callback for each origin you run
+on: `http://localhost:3000/api/gmail/callback` and
+`https://<your-deployment>/api/gmail/callback`. Set `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET`, then click **Connect Gmail** on the workspace. The
+refresh token is exchanged and stored server-side; the browser only ever receives
+a redirect. The scope requested is `gmail.readonly` — there is no code path here
+that sends, deletes, or labels.
+
+The stored token lives on the instance disk, so on Vercel it is lost on a cold
+start. For a connection that survives restarts, put the refresh token in
+`GOOGLE_REFRESH_TOKEN` instead; env always wins.
+
+If an OAuth app is configured and the link is missing or rejected, the case
+**fails closed** — `adapter_unavailable`, with the reason and a remedy on the
+record. It does not fall back to a fixture, because a recorded invoice must never
+be the evidence a real payment rides on. With no OAuth app configured at all,
+fixtures are the documented zero-credential demo and are badged as such.
+
+**Slack** — a bot token with `chat:write`, `channels:history` and
+`reactions:read`, invited to the channel named in `SLACK_CHANNEL_ID`. The human
+gate is a reaction on the proposal message: ✅ approves, ❌ denies, and silence is
+not consent — the window closes and the payment is refused. That channel id is
+injected into the comms poster's mandate *and* into the call, so the allowlist and
+the destination cannot drift apart.
+
+**Stripe** — a test-mode secret key. The vendor allowlist and the cap are enforced
+by the gate *before* the adapter loads, so a refused payment never reaches Stripe
+at all.
+
+Slack and Stripe have no Connect button, because they have no user-consent flow.
+They are configured by environment variable or not at all, and the row says which.
+
 ### Environment
 
 All server-only. Nothing here reaches the client.
@@ -107,18 +149,24 @@ All server-only. Nothing here reaches the client.
 | `VERIFLOW_KEK` | 32-byte key encrypting agent private keys at rest — `openssl rand -hex 32` |
 | `GROQ_API_KEY` | invoice extraction; omit to use the heuristic fallback |
 | `GROQ_MODEL` | defaults to `llama-3.3-70b-versatile` |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REFRESH_TOKEN` | live Gmail reads; omit for fixtures |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | the OAuth app behind **Connect Gmail** |
+| `GOOGLE_REFRESH_TOKEN` | a Gmail link that survives restarts; takes priority over the stored one |
+| `GOOGLE_ACCOUNT_EMAIL` | cosmetic — the mailbox name shown on the connection row |
 | `SLACK_BOT_TOKEN` | live Slack posts; omit to simulate |
+| `SLACK_CHANNEL_ID` | the one channel the poster may use; also the mandate's allowlist |
 | `STRIPE_SECRET_KEY` | live (test-mode) charges; omit to simulate |
+| `VERIFLOW_DATA_DIR` | where the JSON shelves are written; see [Reliability](#reliability) |
 
 Use a Stripe **test-mode** key. Nothing about the gate changes between test and
 live, which is the point — but there is no reason to move real money to prove it.
 
 ## The two-minute demo
 
-1. **Open `/`.** The roster shows all four agents with their mandate chips —
+1. **Open `/`.** The connection row states, per app, whether this run is `LIVE` or
+   `FIXTURE` and which agent holds the credential — say out loud which ones are
+   live today. The roster below shows all four agents with their mandate chips:
    allowed functions, cap, expiry, scope. Point out that Atlas's function list is
-   *empty*: the orchestrator holds no external reach at all. (~20s)
+   *empty* — the orchestrator holds no external reach at all. (~25s)
 2. **Run Aurora Systems.** Pick the Aurora invoice, leave the Slack outcome on
    *approve*, and start it. The timeline fills hop by hop as the case crosses
    Gmail → Slack → Stripe; the ring narrows with it and goes still when the chain
@@ -179,9 +227,10 @@ asserted structurally rather than trusted to a comment.
   invoice was legitimate; a convincing forgery from an allowlisted sender is
   still read.
 - It attests what this system did, not what the external app did afterwards.
-- The keystore is file-backed (`.data/`, gitignored) and encrypted at rest. It is
-  isolated, but it is a file, not an HSM. Serverless filesystems are ephemeral —
-  wire a database-backed store before any non-demo use.
+- The keystore is file-backed and encrypted at rest, in its own file under the
+  storage root with no reader shared with the case shelf. It is isolated, but it
+  is a file, not an HSM. Serverless filesystems are ephemeral — wire a
+  database-backed store before any non-demo use.
 - Terminal 3 credential issuance is real local crypto: keygen, encryption,
   credential build, operator signature, and signature recovery are all verified.
   Live node round-trips are wired and type-correct but runtime-unverified without
@@ -192,6 +241,18 @@ asserted structurally rather than trusted to a comment.
 ## Deploy
 
 Vercel. Set the environment variables above in project settings; the build needs
-network access to Google Fonts (standard for `next/font/google`). Case and proof
-persistence uses a file store under `.data/`, which does not survive a serverless
-cold start — fine for the demo, replace it with a database for anything real.
+network access to Google Fonts (standard for `next/font/google`).
+
+Where VeriFlow writes is resolved in exactly one place
+([`lib/storage/root.ts`](lib/storage/root.ts)): `VERIFLOW_DATA_DIR` if set,
+otherwise `/tmp/veriflow` on a serverless host, otherwise `./.data`. The
+deployment bundle at `/var/task` is read-only, and writing there is what used to
+kill the case before hop one — `tests/deploy.test.ts` now asserts it cannot come
+back. If even `/tmp` refuses, the stores degrade to memory for that instance and
+say so in the logs rather than throwing.
+
+`/tmp` is per-instance and does not survive a cold start. That is fine for a
+demo, and it is stated rather than hidden: the connection row re-reads state on
+every load, so a lapsed Gmail link shows as not connected instead of being
+claimed. Point `VERIFLOW_DATA_DIR` at a mounted volume, or swap in a database,
+for anything that needs to outlive the box.

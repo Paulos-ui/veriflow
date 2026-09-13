@@ -1,16 +1,31 @@
 import { CaseWorkspace } from "@/components/case/CaseWorkspace";
+import { ConnectionRow } from "@/components/case/ConnectionRow";
 import { defaultMandates } from "@/lib/agents/roster";
+import { approvalChannel } from "@/lib/agents/channel";
 import { nowSecs } from "@/lib/mandate/model";
+import { appLinks } from "@/lib/tools/links";
 
 // The workspace is the product surface: one case, four agents, six hops.
 // Mandates are issued server-side and passed down as plain data — the client
 // renders bounds, it never decides them.
+//
+// Dynamic because both things this page reports — which mandates are in force
+// and which apps are connected — are read at request time. A cached answer here
+// would be a stale claim about live credentials, which is the one claim on the
+// page that must never be stale.
 export const dynamic = "force-dynamic";
 
-export default function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ gmail?: string }>;
+}) {
   // Issued 60s in the past for the same reason ap-clerk.ts does it: a mandate
   // whose not_before is exactly now can lose a race against its own first call.
-  const mandates = defaultMandates(nowSecs() - 60);
+  // The channel is injected from the same resolver the case uses, so the roster
+  // panel shows the allowlist the run will actually be judged against.
+  const mandates = defaultMandates(nowSecs() - 60, { approvalChannel: approvalChannel() });
+  const [links, params] = await Promise.all([appLinks(), searchParams]);
 
   return (
     <div className="space-y-8">
@@ -24,6 +39,8 @@ export default function Page() {
           Anything outside those bounds never leaves the server.
         </p>
       </header>
+
+      <ConnectionRow links={links} notice={params.gmail} />
 
       <CaseWorkspace mandates={mandates} />
     </div>

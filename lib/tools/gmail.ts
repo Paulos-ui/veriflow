@@ -1,8 +1,9 @@
 import "server-only";
 import { z } from "zod";
 import type { ToolResult } from "./types";
+import { AdapterUnavailable } from "./types";
 import type { FindInvoiceInput, FetchAttachmentInput } from "./registry";
-import { googleAuth } from "./google-auth";
+import { googleAuth, googleAppConfigured } from "./google-auth";
 import { FIXTURE_INVOICES, asGmailMessage, fromBase64Url, fixtureFor } from "./fixtures";
 
 // =============================================================================
@@ -85,6 +86,23 @@ export async function findInvoice(
   const auth = await googleAuth();
 
   if (!auth) {
+    // Two very different situations wear the same "no token" shape, and
+    // collapsing them would be dishonest in opposite directions:
+    //
+    //   No OAuth app configured  → nobody asked for live mail. Fixtures are the
+    //                              documented zero-credential demo. Badge says
+    //                              so, and no money moves on a recorded read.
+    //   OAuth app configured     → the operator DID ask for live mail and the
+    //                              link is missing or expired. Serving a
+    //                              recorded invoice here would let a real
+    //                              payment ride on fake evidence. Fail closed.
+    if (googleAppConfigured()) {
+      throw new AdapterUnavailable(
+        "gmail_not_connected",
+        "Gmail is configured but not connected, so no invoice was read.",
+        "Click Connect Gmail on the workspace, or set GOOGLE_REFRESH_TOKEN."
+      );
+    }
     const f = fixtureBySender(input.sender);
     return {
       output: parseMessage(asGmailMessage(f)),
@@ -103,7 +121,17 @@ export async function findInvoice(
 
   const found = (await list.json()) as { messages?: { id: string }[] };
   const id = found.messages?.[0]?.id;
-  if (!id) throw new Error(`No message from ${input.sender} in ${input.label}.`);
+  if (!id) {
+    // An empty mailbox is not a bug and must not surface as one. The operator
+    // asked for live mail and there is none matching — the case stops with a
+    // reason and something to do about it, and no money moves.
+    throw new AdapterUnavailable(
+      "no_invoice_found",
+      `No invoice from ${input.sender} was found in ${input.label}.`,
+      `Send an invoice email from ${input.sender} to the connected mailbox and label it ${input.label}.`,
+      "Mailbox"
+    );
+  }
 
   const detail = await fetch(`${GMAIL}/messages/${id}?format=full`, {
     headers: { Authorization: `Bearer ${auth.accessToken}` },

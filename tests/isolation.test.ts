@@ -53,7 +53,15 @@ describe("each adapter reads only its own credentials", () => {
     assert.deepEqual([...new Set(envReads)], ["process.env.GROQ_API_KEY"]);
   });
 
-  test("STRIPE_SECRET_KEY appears in exactly one module", () => {
+  test("STRIPE_SECRET_KEY is USED in exactly one module", () => {
+    // Refined from "appears in one module" once the connection-status module
+    // landed. links.ts must observe whether a key EXISTS to badge the UI
+    // live-vs-recorded, which is presence, not use. The distinction is worth
+    // keeping precise rather than waving through: a module that may see the
+    // name must still be incapable of spending it.
+    const USE_ALLOWED = path.join("lib", "tools", "pay.ts");
+    const PRESENCE_ALLOWED = path.join("lib", "tools", "links.ts");
+
     const hits: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(path.join(root, dir), { withFileTypes: true })) {
@@ -63,7 +71,13 @@ describe("each adapter reads only its own credentials", () => {
       }
     };
     walk("lib");
-    assert.deepEqual(hits, [path.join("lib", "tools", "pay.ts")]);
+    assert.deepEqual(hits.sort(), [USE_ALLOWED, PRESENCE_ALLOWED].sort());
+
+    // The presence-only module cannot reach the network at all, so it has no
+    // way to spend a key even though it can see that one is set.
+    const links = read(PRESENCE_ALLOWED);
+    assert.ok(!links.includes("fetch("), "links.ts must not make network calls");
+    assert.ok(!links.includes("Authorization"), "links.ts must not build auth headers");
   });
 });
 
