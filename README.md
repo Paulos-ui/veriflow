@@ -2,12 +2,12 @@
 
 **A control plane for specialist AI agents.** Four agents run one real case across
 Gmail, Slack and Stripe under signed, scoped mandates. Every tool call is checked
-on the server before it runs, and every hop — including the refused ones — is
+on the server before it runs, and every hop including the refused ones is
 sealed into a hash chain you can verify afterwards.
 
 Built for the Virtual Multi-App AI Agent Hackathon. Terminal 3 is the trust
 layer, not one of the three apps.
-
+### 🎥 [Watch the VeriFlow Demo](https://drive.google.com/file/d/1Vi1fPuu3OkPQ0ury6LGA7LV2gknhyMNi/view?usp=sharing)
 ---
 
 ## The claim
