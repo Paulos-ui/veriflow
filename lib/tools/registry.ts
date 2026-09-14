@@ -4,17 +4,17 @@ import type { ToolDescriptor } from "./types";
 import { describeTool } from "./types";
 
 // =============================================================================
-// The registry. Six tools across three external apps, each bound to exactly one
+// The registry. Ten tools across seven external apps, each bound to exactly one
 // agent key.
 //
 // This module holds DESCRIPTORS ONLY — schemas and demand-derivation, no
 // network code and no credentials. That is why the gate, the planner, the
 // tests, and eventually the roster UI can all import it freely. The executors
 // that hold tokens live in sibling modules and are reached through the loader
-// in runner.ts (Phase 2), after a ruling, one at a time.
+// in runner.ts, after a ruling, one at a time.
 //
 // Terminal 3 is deliberately absent from this list. It is the trust layer that
-// attests these calls, not one of the three apps being acted upon.
+// attests these calls, not one of the apps being acted upon.
 // =============================================================================
 
 // --- Gmail — the mail reader's two tools ------------------------------------
@@ -130,6 +130,91 @@ const payCharge = describeTool({
   requiresApproval: true,
 });
 
+// --- the Arena's four — one tool each, one destination each ------------------
+//
+// Every one of these carries an `idempotencyKey` in its schema rather than
+// leaving de-duplication to the adapter's discretion. A double-clicked button
+// and a retried request are indistinguishable at the network layer, so the key
+// is derived upstream from the event id and passed down; each adapter then uses
+// whichever de-duplication its app actually offers, and says so.
+//
+// None of the four requires human approval. That is a deliberate asymmetry with
+// pay.charge: opening an issue is reversible and a payment is not, and putting a
+// gate in front of a reversible write would cheapen the one gate that matters.
+
+export const OpenIssueInput = z.object({
+  /** `owner/repo`. Re-declared per call so the gate re-checks it every time. */
+  repo: z.string().regex(/^[^/\s]+\/[^/\s]+$/, "expected owner/repo"),
+  title: z.string().min(1).max(256),
+  body: z.string().min(1),
+  idempotencyKey: z.string().min(8),
+});
+
+const githubOpenIssue = describeTool({
+  name: "github.open_issue",
+  agentPubkey: ROSTER["repo.scribe"].agentPubkey,
+  sideEffect: "write",
+  summary: "Open an issue on the one allowlisted repository",
+  inputSchema: OpenIssueInput,
+  demand: (i) => ({ repo: i.repo }),
+  requiresApproval: false,
+});
+
+export const SendMessageInput = z.object({
+  /** Chat id, not a username. Usernames can be transferred; ids cannot. */
+  chat: z.string().min(1),
+  text: z.string().min(1).max(4096),
+  idempotencyKey: z.string().min(8),
+});
+
+const telegramSendMessage = describeTool({
+  name: "telegram.send_message",
+  agentPubkey: ROSTER["signal.courier"].agentPubkey,
+  sideEffect: "write",
+  summary: "Send one alert to the one allowlisted chat",
+  inputSchema: SendMessageInput,
+  demand: (i) => ({ chat: i.chat }),
+  requiresApproval: false,
+});
+
+export const CreateEntryInput = z.object({
+  database: z.string().min(1),
+  title: z.string().min(1),
+  outcome: z.string().min(1),
+  findingCount: z.number().int().nonnegative(),
+  severity: z.string().min(1),
+  subjectHash: z.string().min(8),
+  idempotencyKey: z.string().min(8),
+});
+
+const notionCreateEntry = describeTool({
+  name: "notion.create_entry",
+  agentPubkey: ROSTER["ledger.archivist"].agentPubkey,
+  sideEffect: "write",
+  summary: "File one run record in the one allowlisted database",
+  inputSchema: CreateEntryInput,
+  demand: (i) => ({ database: i.database }),
+  requiresApproval: false,
+});
+
+export const AnchorMemoInput = z.object({
+  /** Cluster name, checked against the mandate. `mainnet-beta` is never listed. */
+  cluster: z.string().min(1),
+  /** What goes on chain: a hash and a label, never the underlying data. */
+  memo: z.string().min(1).max(566),
+  idempotencyKey: z.string().min(8),
+});
+
+const solanaAnchorMemo = describeTool({
+  name: "solana.anchor_memo",
+  agentPubkey: ROSTER["chain.notary"].agentPubkey,
+  sideEffect: "write",
+  summary: "Anchor the proof hash as a memo on Solana devnet",
+  inputSchema: AnchorMemoInput,
+  demand: (i) => ({ cluster: i.cluster }),
+  requiresApproval: false,
+});
+
 // --- the registry -----------------------------------------------------------
 
 const ALL: ToolDescriptor<never>[] = [
@@ -139,6 +224,10 @@ const ALL: ToolDescriptor<never>[] = [
   slackAwaitApproval,
   slackPostProof,
   payCharge,
+  githubOpenIssue,
+  telegramSendMessage,
+  notionCreateEntry,
+  solanaAnchorMemo,
 ] as unknown as ToolDescriptor<never>[];
 
 export const TOOLS: ReadonlyMap<string, ToolDescriptor<never>> = new Map(

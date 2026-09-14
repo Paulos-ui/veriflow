@@ -1,12 +1,17 @@
 # VeriFlow
 
-**A control plane for specialist AI agents.** Four agents run one real case across
-Gmail, Slack and Stripe under signed, scoped mandates. Every tool call is checked
-on the server before it runs, and every hop — including the refused ones — is
-sealed into a hash chain you can verify afterwards.
+**A control plane for specialist AI agents.** Agents run real cases across Gmail,
+Slack, Stripe, GitHub, Telegram, Notion and Solana devnet under signed, scoped
+mandates. Every tool call is checked on the server before it runs, and every hop —
+including the refused ones — is sealed into a hash chain you can verify afterwards.
+
+There are two flows on the same machinery. The **AP case** pays an invoice. The
+**Arena** takes something anyone can forge — a tic-tac-toe log, a spreadsheet —
+verifies it deterministically, and carries the result to four apps that have never
+heard of each other.
 
 Built for the Virtual Multi-App AI Agent Hackathon. Terminal 3 is the trust
-layer, not one of the three apps.
+layer, not one of the apps.
 
 ---
 
@@ -41,6 +46,63 @@ Gmail       —        Slack         Stripe    Slack      —
 
 Four agents, four delegatee keys. "The mail reader cannot pay" is enforced by the
 gate comparing keys, not by anyone remembering not to call the wrong function.
+
+## The Arena
+
+The AP case answers "can an agent be stopped?". The Arena answers the question
+underneath it: **how do you know the thing it acted on was true?**
+
+Submit a finished tic-tac-toe game at **`/arena`** or a CSV at **`/verify`** and
+the same eight-hop spine runs:
+
+```
+observe ─► verify ─► plan ─► record ─► signal ─► archive ─► anchor ─► seal
+Atlas      Atlas     Atlas   Quill     Beacon    Folio      Cairn     Atlas
+ —         —          —      GitHub    Telegram  Notion     Solana     —
+```
+
+| Agent | Role | Holds | Writes |
+|---|---|---|---|
+| **Quill** | `repo.scribe` | GitHub token | one issue, one allowlisted repo |
+| **Beacon** | `signal.courier` | Telegram bot token | one message, one allowlisted chat |
+| **Folio** | `ledger.archivist` | Notion key | one entry, one allowlisted database |
+| **Cairn** | `chain.notary` | devnet keypair | one SPL memo, devnet only |
+
+What makes it a verification story rather than a demo:
+
+- **`verify` is deterministic.** A game is replayed from an empty board — turn
+  order, occupied squares, moves after the win. A CSV is profiled column by
+  column: type, fill rate, distinct count, median, median absolute deviation,
+  range. Findings carry the row numbers behind them. **No model produces a
+  verdict.**
+- **`plan` may narrow, never widen.** The permitted action set is fixed before
+  the model is asked. The model may drop an action it thinks is unwarranted and
+  must say why; anything outside the set makes the plan fall back to the
+  deterministic one, and the case records that it fell back.
+- **The model's disagreement is kept.** If its account conflicts with the
+  engine's findings, both are shown, side by side, marked.
+- **The four writes are independent.** A refusal at `record` is recorded and the
+  run continues to `signal` — one integration failing does not erase three that
+  confirmed. In the AP spine a refusal halts; in the Arena spine it does not.
+  That difference is one field on the spine, not a branch in the runner.
+- **Unconfigured is not failed.** An integration with no credential is planned
+  as `skipped` with a plain reason, and the case ends `partial`. It is never
+  reported as succeeded, and nothing is faked to make the demo look complete.
+
+**`/activity`** lists every sealed run and re-verifies the hash chain on read. A
+broken chain is reported with the index of the hop that broke it, above the
+report rather than below it.
+
+### The Arena's deny paths
+
+The three worth showing, none of them special-cased:
+
+| Try this | Outcome |
+|---|---|
+| Submit a tampered log (the Arena has a button for it) | `verify` refuses and names the move it rejected — nothing is written anywhere |
+| `SOLANA_NETWORK=mainnet-beta` | scope refusal at the gate; the adapter never loads. A mainnet RPC URL is refused a second time inside the adapter |
+| Leave a block of `.env.local` empty | that action is `skipped`, the reason is on the report, and the case ends `partial` |
+
 
 ## Reliability
 
@@ -101,7 +163,8 @@ actually take.
 
 ### Connecting the apps
 
-Every app is optional and independent. Connect one, two, or all three.
+Every app is optional and independent. Connect none of them, some of them, or all
+seven — nothing here is a prerequisite for anything else.
 
 **Gmail** — create an OAuth 2.0 Client ID (Web application) in Google Cloud
 Console, enable the Gmail API, and register the callback for each origin you run
@@ -136,6 +199,49 @@ at all.
 Slack and Stripe have no Connect button, because they have no user-consent flow.
 They are configured by environment variable or not at all, and the row says which.
 
+### Connecting the Arena's apps
+
+Same rule: each is optional, each is independent, and each needs **both** halves —
+a credential with no destination has nowhere to write, and a destination with no
+credential cannot write. The board on `/arena` reports which four are live, read
+from the same resolver the run uses.
+
+**GitHub** — a fine-grained personal access token
+([settings](https://github.com/settings/personal-access-tokens)) scoped to one
+repository with *Issues: Read and write*. Nothing here needs repo-wide or org-wide
+access; a classic `repo` token grants far more than this agent's mandate lets it
+use. Set `GITHUB_OWNER` and `GITHUB_REPO` to a repository you own — they are read
+in one place and injected into both the mandate's allowlist and the call, so they
+cannot drift apart.
+
+**Telegram** — create a bot with [@BotFather](https://t.me/botfather). Message the
+bot, then read the chat id from
+`https://api.telegram.org/bot<TOKEN>/getUpdates`. For a group, add the bot first;
+group ids are negative. Use the id, not the `@username`.
+
+**Notion** — an internal integration secret from
+[notion.so/my-integrations](https://www.notion.so/my-integrations), then **share
+the target database with that integration** or every write returns 404. The
+adapter reads the database's real schema before writing and fills only columns
+that exist, matching on name (`outcome`/`result`/`status`, `findings`/`anomalies`,
+`severity`/`level`, `proof`/`hash`). Anything unmatched goes into the page body.
+A database with nothing but a title still works — it records less and says so. No
+property name is assumed.
+
+**Solana** — devnet only. Generate a throwaway keypair and fund it:
+
+```bash
+solana-keygen new --no-bip39-passphrase -o veriflow-devnet.json
+solana airdrop 1 <address> --url https://api.devnet.solana.com
+```
+
+Put the file's contents (the 64-number JSON array) in `SOLANA_PRIVATE_KEY`, or a
+base58 secret key from a wallet. The key signs SPL Memo transactions and nothing
+else — the memo is a proof hash and a label, there are no token accounts and no
+transfers. The signature is polled to confirmation before the hop is marked
+verified; an unconfirmed transaction is never reported as anchored.
+
+
 ### Environment
 
 All server-only. Nothing here reaches the client.
@@ -155,7 +261,21 @@ All server-only. Nothing here reaches the client.
 | `SLACK_BOT_TOKEN` | live Slack posts; omit to simulate |
 | `SLACK_CHANNEL_ID` | the one channel the poster may use; also the mandate's allowlist |
 | `STRIPE_SECRET_KEY` | live (test-mode) charges; omit to simulate |
+| `GITHUB_TOKEN` | fine-grained PAT, **Issues: Read and write** on one repo |
+| `GITHUB_OWNER` / `GITHUB_REPO` | joined into `owner/repo` — the exact string the mandate allowlists |
+| `TELEGRAM_BOT_TOKEN` | from @BotFather |
+| `TELEGRAM_CHAT_ID` | a numeric id, never an `@username` — usernames get transferred, ids do not |
+| `NOTION_API_KEY` | internal integration secret; **share the database with the integration** |
+| `NOTION_DATABASE_ID` | a database, not a page and not a view |
+| `SOLANA_RPC_URL` | `https://api.devnet.solana.com` — a mainnet URL is refused |
+| `SOLANA_NETWORK` | `devnet` (default); anything else is refused by the mandate |
+| `SOLANA_PRIVATE_KEY` | server-side devnet keypair: the 64-number `solana-keygen` array, or a base58 secret key |
 | `VERIFLOW_DATA_DIR` | where the JSON shelves are written; see [Reliability](#reliability) |
+
+There are **no `NEXT_PUBLIC_*` variables, deliberately.** Every value above is
+read on the server only; prefixing any of them would inline the secret into the
+client bundle. The app derives its own origin from the incoming request, so there
+is no app-URL variable to keep in sync either.
 
 Use a Stripe **test-mode** key. Nothing about the gate changes between test and
 live, which is the point — but there is no reason to move real money to prove it.
@@ -182,6 +302,28 @@ live, which is the point — but there is no reason to move real money to prove 
    boundary of what the proof does and does not claim. (~10s)
 
 The one line worth saying out loud: *a blocked case is evidence, not an error.*
+
+### The Arena, in ninety seconds
+
+If you have the four Arena apps wired up, this is the stronger demo:
+
+1. **`/arena`.** Play a game — the opponent searches every remaining position, so
+   a draw is the best result on offer. The board is the cheap part; say so. (~20s)
+2. **Submit it.** Watch `observe → verify → plan` settle, then four writes land in
+   four different apps under four different keys. Open each action's refs: the
+   issue number, the message id, the page, the devnet signature. Follow the
+   explorer link — that transaction is on a public ledger. (~35s)
+3. **Submit a tampered log.** The Arena has a button that splices one extra move
+   onto a finished board. `verify` refuses, names the move, and **nothing is
+   written to any of the four apps.** (~20s)
+4. **`/verify`, load the sample.** Ten invoice rows with a blank amount, a
+   96,400.00 outlier, an invalid date and a duplicate. The findings carry row
+   numbers and the column statistics they were judged against — spread is median
+   absolute deviation, so one outlier cannot hide inside it. (~15s)
+5. **`/activity`.** The sealed record of all of it, chain re-verified on read.
+
+The line for this one: *the model wrote the summary; it did not decide the
+verdict, and it could not have widened the plan.*
 
 ## Stack
 
@@ -237,6 +379,20 @@ asserted structurally rather than trusted to a comment.
   a deployed node.
 - The Groq extraction step can misread an invoice. The cap, the allowlist and the
   human gate sit downstream of it for exactly that reason.
+- In the Arena the model writes the narration and may narrow the plan. It never
+  produces the verdict, and it cannot add an action. With `GROQ_API_KEY` unset
+  the deterministic plan and a plain narration are used, and the report says
+  which it got — there is no silent degradation.
+- The anomaly rules are ordinary statistics, not a model and not a claim to
+  detect fraud. An outlier is a number far from the median relative to the
+  column's median absolute deviation. That finds mistakes. It does not find
+  someone who knows the rule.
+- A Solana memo anchors a hash of the run's summary. It proves that hash existed
+  at that slot. It does not prove the summary was true, and the data itself is
+  never published — devnet is a public ledger.
+- Devnet is not durable infrastructure. It is reset periodically and it is not
+  where anything of value belongs; the anchor is a demonstration of the shape of
+  the proof, not a production notarisation.
 
 ## Deploy
 

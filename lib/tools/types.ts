@@ -45,8 +45,23 @@ export interface ToolDescriptor<I = unknown> {
   requiresApproval: boolean;
 }
 
-/** Where a result came from. Rendered as a badge on every hop (MASTER.md §8). */
-export type Provenance = "live" | "fixture" | "simulated";
+/**
+ * Where a result came from. Rendered as a badge on every hop (MASTER.md §8).
+ *
+ *   live      — a real external app answered, over the network, with credentials.
+ *   fixture   — canned demo data stood in because no credential was configured.
+ *   simulated — a stand-in that imitates an app's behaviour without calling it.
+ *   derived   — computed here, from the operator's own input, by code in this
+ *               repository. No external app was involved and none was needed.
+ *
+ * `derived` exists because the Arena's engines are not fixtures. When somebody
+ * uploads a spreadsheet and the checker finds an outlier in it, that is a real
+ * result on real data; badging it "Fixture" would tell an operator the number
+ * was canned. The distinction an operator actually cares about is whether a
+ * result can be trusted, and "our code, your data" is a different answer from
+ * "our demo data".
+ */
+export type Provenance = "live" | "fixture" | "simulated" | "derived";
 
 export interface ToolResult<O = unknown> {
   output: O;

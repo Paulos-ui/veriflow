@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useScroll, useMotionValueEvent } from "framer-motion";
 import { AuthorityRing } from "@/components/seal/AuthorityRing";
-import { HOP_ORDER, type HopKind } from "@/lib/cases/model";
+import { AP_HOPS, type ApHopKind } from "@/lib/cases/model";
 import { agentFor, type AgentRole } from "@/lib/agents/roster";
 
 // =============================================================================
@@ -31,10 +31,12 @@ interface Step {
   app: "Gmail" | "Slack" | "Stripe" | null;
 }
 
-// Keyed by HopKind, ordered by HOP_ORDER below. Two guarantees fall out of that:
-// a hop added to the model without copy here is a type error, and the narrative
-// can never present the hops in an order the state machine does not use.
-const STEP: Record<HopKind, Step> = {
+// Keyed by ApHopKind, ordered by AP_HOPS below. Two guarantees fall out of that:
+// a hop added to the AP spine without copy here is a type error, and the
+// narrative can never present the hops in an order the state machine does not
+// use. Deliberately keyed to the AP spine alone — this walkthrough is about the
+// invoice case, and the Arena has its own narrative on /arena.
+const STEP: Record<ApHopKind, Step> = {
   ingest: {
     label: "Ingest",
     role: "mail.reader",
@@ -83,7 +85,7 @@ const STEP: Record<HopKind, Step> = {
   },
 };
 
-const STEPS = HOP_ORDER.map((kind) => ({ kind, ...STEP[kind] }));
+const STEPS = AP_HOPS.map((kind) => ({ kind, ...STEP[kind] }));
 
 export function CaseWalkthrough() {
   const track = useRef<HTMLDivElement>(null);

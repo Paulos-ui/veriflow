@@ -9,10 +9,19 @@ import { ROSTER, type AgentRole } from "@/lib/agents/roster";
 export const metadata: Metadata = {
   title: "About — VeriFlow",
   description:
-    "A control plane for specialist AI agents: scoped mandates, server-side enforcement, and a hash-chained proof for every hop across Gmail, Slack and Stripe.",
+    "A control plane for specialist AI agents: scoped mandates, server-side enforcement, deterministic verification, and a hash-chained proof for every hop across Gmail, Slack, Stripe, GitHub, Telegram, Notion and Solana devnet.",
 };
 
-const ORDER: AgentRole[] = ["orchestrator", "mail.reader", "comms.poster", "pay.clerk"];
+const ORDER: AgentRole[] = [
+  "orchestrator",
+  "mail.reader",
+  "comms.poster",
+  "pay.clerk",
+  "repo.scribe",
+  "signal.courier",
+  "ledger.archivist",
+  "chain.notary",
+];
 
 /** What each agent is trusted with — and pointedly, what it is not. */
 const HOLDS: Record<AgentRole, { holds: string; cannot: string }> = {
@@ -20,6 +29,10 @@ const HOLDS: Record<AgentRole, { holds: string; cannot: string }> = {
   "mail.reader": { holds: "Google credentials", cannot: "Cannot post or pay" },
   "comms.poster": { holds: "Slack bot token", cannot: "Cannot read mail or pay" },
   "pay.clerk": { holds: "Stripe key", cannot: "Cannot read mail or post" },
+  "repo.scribe": { holds: "GitHub token", cannot: "One repository, issues only" },
+  "signal.courier": { holds: "Telegram bot token", cannot: "One chat, nothing else" },
+  "ledger.archivist": { holds: "Notion key", cannot: "One database, no deletes" },
+  "chain.notary": { holds: "Devnet keypair", cannot: "Devnet memos only, never mainnet" },
 };
 
 const REFUSALS = [
@@ -50,7 +63,7 @@ const FEATURES: [string, string][] = [
   ],
   [
     "Credentials split by principal",
-    "Four agents, four keys. The mail reader has no payment credential to misuse, which is a stronger claim than asking it politely not to.",
+    "Eight agents, eight keys, and no agent can load another's adapter. The mail reader has no payment credential to misuse, which is a stronger claim than asking it politely not to.",
   ],
   [
     "Fail closed by absence",
@@ -68,6 +81,18 @@ const FEATURES: [string, string][] = [
     "Live and recorded are labelled",
     "Each hop says whether it hit a real API, replayed a fixture, or ran with writes suppressed. A simulated payment is never styled as a completed one.",
   ],
+  [
+    "Verdicts are computed, not asserted",
+    "Replay and column statistics decide what happened. The model writes the account of it afterwards, and where the two disagree both are shown rather than reconciled.",
+  ],
+  [
+    "Unconfigured is not failed",
+    "An integration with no credential is planned as skipped with a plain reason and the case ends partial. Nothing is faked to make a run look complete.",
+  ],
+  [
+    "One failure does not erase three",
+    "In the Arena the four writes are independent: a refusal is recorded and the run continues. Whether a refusal halts a case is one field on the spine, not a branch in the runner.",
+  ],
 ];
 
 const LIMITS = [
@@ -76,6 +101,33 @@ const LIMITS = [
   "The keystore is file-backed and intended for the demo. It is isolated and encrypted at rest, but it is not an HSM.",
   "Fixture mode replays recorded API responses. The adapters and the mandate gate are identical in both modes — only the network call is skipped.",
   "The Groq extraction step can misread an invoice. That is why the cap, the allowlist and the human gate sit downstream of it: the model proposes, the mandate decides.",
+  "The anomaly rules are ordinary statistics, not fraud detection. An outlier is a number far from the median relative to the column's median absolute deviation. That finds mistakes. It does not find someone who knows the rule.",
+  "A devnet memo proves a hash existed at a slot. It does not prove the summary behind that hash was true, and the data itself is never published — devnet is a public ledger, so only the hash goes on it.",
+  "Devnet is reset periodically and is not durable infrastructure. The anchor demonstrates the shape of the proof; it is not a production notarisation.",
+];
+
+/** The Arena's eight hops, grouped into the four things they actually do. */
+const ARENA_STAGES: [string, string, string][] = [
+  [
+    "observe",
+    "Take it at face value, briefly",
+    "The submission is recorded exactly as it arrived and hashed. Nothing is judged yet — the point of a separate hop is that the claim and the verdict are different facts on the record.",
+  ],
+  [
+    "verify",
+    "Decide it in code",
+    "A game is replayed from an empty board: turn order, occupied squares, moves played after the win. A spreadsheet is profiled column by column — type, fill rate, distinct count, median, median absolute deviation, range — and every finding carries the rows behind it. No model is consulted.",
+  ],
+  [
+    "plan",
+    "Narrow, never widen",
+    "The permitted action set is fixed before the model is asked. It may drop an action it thinks unwarranted and must say why. Anything outside the set makes the plan fall back to the deterministic one, and the case records that it did.",
+  ],
+  [
+    "record · signal · archive · anchor",
+    "Four keys, four destinations",
+    "An issue on one repository, a message in one chat, an entry in one database, a memo on devnet. Each is written by a different agent holding one credential, and each reports its own outcome. A refusal at one is recorded and the run continues — one failure does not erase three confirmations.",
+  ],
 ];
 
 export default function AboutPage() {
@@ -102,10 +154,11 @@ export default function AboutPage() {
               </span>
             </h1>
             <p className="mt-7 max-w-xl text-lg leading-relaxed text-muted">
-              VeriFlow runs specialist agents across Gmail, Slack and Stripe under
-              signed, scoped delegations. Every hop is checked on the server before it
-              runs, and every hop — including the ones that were refused — is sealed
-              into a hash chain you can verify afterwards.
+              VeriFlow runs specialist agents across Gmail, Slack, Stripe, GitHub,
+              Telegram, Notion and Solana devnet under signed, scoped delegations. Every
+              hop is checked on the server before it runs, and every hop — including the
+              ones that were refused — is sealed into a hash chain you can verify
+              afterwards.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link
@@ -180,12 +233,14 @@ export default function AboutPage() {
         <section className="py-20 md:py-28">
           <p className="eyebrow mb-3">Architecture</p>
           <h2 className="max-w-2xl font-display text-[clamp(1.8rem,3.6vw,2.6rem)] leading-[1.12] text-bone">
-            Four principals, four keys. Separation is structural, not procedural.
+            Eight principals, eight keys. Separation is structural, not procedural.
           </h2>
           <p className="mt-5 max-w-2xl leading-relaxed text-muted">
             Each agent holds its own delegatee key and its own credentials. &ldquo;The
             mail reader cannot pay&rdquo; is enforced by the gate comparing keys — not
-            by anyone remembering not to call the wrong function.
+            by anyone remembering not to call the wrong function. An agent that plays no
+            part in a given case is not merely idle: it is issued a real mandate granting
+            zero functions, so misrouting a hop to it is a refusal rather than a gap.
           </p>
 
           <div className="mt-10 grid gap-px overflow-hidden rounded-card border border-hairline bg-hairline sm:grid-cols-2">
@@ -224,7 +279,7 @@ export default function AboutPage() {
               ],
               [
                 "Trust layer",
-                "Terminal 3 signs identities and delegation credentials. It is not one of the three apps — it is what makes the other three accountable.",
+                "Terminal 3 signs identities and delegation credentials. It is not one of the apps — it is what makes the apps accountable.",
               ],
               [
                 "Proof",
@@ -286,6 +341,62 @@ export default function AboutPage() {
               );
             })}
           </ul>
+        </section>
+
+        <div className="rule" />
+
+        {/* ---- the arena --------------------------------------------------- */}
+        <section className="py-20 md:py-28">
+          <p className="eyebrow mb-3">The second flow</p>
+          <h2 className="max-w-2xl font-display text-[clamp(1.8rem,3.6vw,2.6rem)] leading-[1.12] text-bone">
+            A mandate stops an agent. It does not tell you the thing it acted on was
+            true.
+          </h2>
+          <p className="mt-5 max-w-2xl leading-relaxed text-muted">
+            So the Arena puts something forgeable in front of the same machinery. A
+            finished tic-tac-toe game is five integers anybody could type; a spreadsheet
+            is whatever someone exported. Both are replayed or profiled by code before
+            anything reaches an external app, and the result travels to four services
+            that have never heard of each other.
+          </p>
+
+          <div className="mt-10 grid gap-px overflow-hidden rounded-card border border-hairline bg-hairline sm:grid-cols-2">
+            {ARENA_STAGES.map(([stage, title, body]) => (
+              <div key={stage} className="bg-surface p-6">
+                <div className="flex items-baseline gap-2.5">
+                  <span className="crypto text-[11px] text-verdigris">{stage}</span>
+                  <h3 className="text-[15px] text-bone">{title}</h3>
+                </div>
+                <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted">{body}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-8 max-w-2xl text-[14px] leading-relaxed text-bone">
+            The sentence the whole flow exists to earn: the model wrote the summary, it
+            did not decide the verdict, and it could not have widened the plan.
+          </p>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href="/arena"
+              className="rounded-card border border-bone/20 bg-surface px-5 py-2.5 text-sm text-bone transition-colors hover:border-bone/35"
+            >
+              Play a game
+            </Link>
+            <Link
+              href="/verify"
+              className="rounded-card border border-hairline px-5 py-2.5 text-sm text-muted transition-colors hover:border-bone/25 hover:text-bone"
+            >
+              Check a spreadsheet
+            </Link>
+            <Link
+              href="/activity"
+              className="rounded-card border border-hairline px-5 py-2.5 text-sm text-muted transition-colors hover:border-bone/25 hover:text-bone"
+            >
+              Read the record
+            </Link>
+          </div>
         </section>
 
         <div className="rule" />
@@ -379,14 +490,20 @@ export default function AboutPage() {
         <section className="flex flex-col items-center gap-7 py-24 text-center md:py-32">
           <AuthorityRing narrowing={1} state="verified" boundRules={4} size={104} />
           <h2 className="max-w-lg font-display text-[clamp(1.6rem,3vw,2.2rem)] leading-tight text-bone">
-            Watch one case cross three apps.
+            Stop reading. Try to break it.
           </h2>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
-              href="/"
+              href="/arena"
               className="rounded-card bg-bone px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-white"
             >
-              Open the workspace
+              Open the Arena
+            </Link>
+            <Link
+              href="/"
+              className="rounded-card border border-hairline px-5 py-2.5 text-sm text-muted transition-colors hover:border-bone/25 hover:text-bone"
+            >
+              Run an invoice case
             </Link>
             <Link
               href="/reliability"

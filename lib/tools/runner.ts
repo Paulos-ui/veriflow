@@ -52,6 +52,14 @@ async function load(tool: string): Promise<((input: never) => Promise<ToolResult
       return (await import("./slack")).postProof as never;
     case "pay.charge":
       return (await import("./pay")).charge as never;
+    case "github.open_issue":
+      return (await import("./github")).openIssue as never;
+    case "telegram.send_message":
+      return (await import("./telegram")).sendMessage as never;
+    case "notion.create_entry":
+      return (await import("./notion")).createEntry as never;
+    case "solana.anchor_memo":
+      return (await import("./solana")).anchorMemo as never;
     default:
       return null;
   }

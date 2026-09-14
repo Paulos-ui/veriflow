@@ -84,6 +84,10 @@ function hopPreimage(h: Hop, prev: string | null): string {
           remedy: h.refusal.remedy ?? null,
         }
       : null,
+    // Under the seal because it decides whether the case reads as `completed`
+    // or `partial`: rewriting "unconfigured" to "unplanned" would turn a run
+    // that could not finish into one that chose not to.
+    skipReason: h.skipReason ?? null,
     startedAt: h.startedAt,
     endedAt: h.endedAt,
     prevHopHash: prev,

@@ -1,5 +1,6 @@
 import { CaseWorkspace } from "@/components/case/CaseWorkspace";
 import { ConnectionRow } from "@/components/case/ConnectionRow";
+import { Narrative } from "@/components/landing/Narrative";
 import { defaultMandates } from "@/lib/agents/roster";
 import { approvalChannel } from "@/lib/agents/channel";
 import { nowSecs } from "@/lib/mandate/model";
@@ -40,9 +41,34 @@ export default async function Page({
         </p>
       </header>
 
-      <ConnectionRow links={links} notice={params.gmail} />
+      <div className="pt-4">
+        <Narrative />
+      </div>
 
-      <CaseWorkspace mandates={mandates} />
+      {/* The original case, kept where it has always been. The narrative above
+          argues the general claim; this is the specific one it was built for,
+          and it still runs against the same mandate layer. */}
+      <section aria-labelledby="ap-case-heading" className="space-y-6 pt-12">
+        <div className="rule" />
+        <header className="pt-2">
+          <p className="eyebrow text-gold">The original case</p>
+          <h2
+            id="ap-case-heading"
+            className="mt-2 font-display text-[24px] leading-tight text-bone sm:text-[28px]"
+          >
+            One invoice, four agents, six hops.
+          </h2>
+          <p className="mt-2 max-w-prose text-[13.5px] leading-relaxed text-muted">
+            An accounts-payable clerk reads an invoice from Gmail, proposes a payment in Slack,
+            waits for a person to answer, and only then touches Stripe. The mandates below are the
+            ones this run will actually be judged against.
+          </p>
+        </header>
+
+        <ConnectionRow links={links} notice={params.gmail} />
+
+        <CaseWorkspace mandates={mandates} />
+      </section>
     </div>
   );
 }

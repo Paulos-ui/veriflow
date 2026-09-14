@@ -23,6 +23,14 @@ export const MandateScopes = z.object({
   slackChannels: z.array(z.string()).optional(),
   /** Stripe: vendors this agent may move money to. */
   vendors: z.array(z.string()).optional(),
+  /** GitHub: `owner/repo` this agent may open issues on. */
+  repos: z.array(z.string()).optional(),
+  /** Telegram: exact chat ids. Never usernames — usernames get transferred. */
+  chats: z.array(z.string()).optional(),
+  /** Notion: database ids this agent may write entries to. */
+  databases: z.array(z.string()).optional(),
+  /** Solana: clusters this agent may broadcast to. `mainnet-beta` is never listed. */
+  clusters: z.array(z.string()).optional(),
 });
 export type MandateScopes = z.infer<typeof MandateScopes>;
 
@@ -59,6 +67,14 @@ export interface Demand {
   gmailLabel?: string;
   slackChannel?: string;
   vendor?: string;
+  /** `owner/repo` an issue would be opened on. */
+  repo?: string;
+  /** Telegram chat id a message would be sent to. */
+  chat?: string;
+  /** Notion database id an entry would be written to. */
+  database?: string;
+  /** Solana cluster a transaction would be broadcast to. */
+  cluster?: string;
 }
 
 /** Seconds since epoch. Injected in tests so expiry is deterministic. */
@@ -78,5 +94,9 @@ export function describeScopes(s: MandateScopes): string[] {
   if (s.gmailLabels?.length) out.push(`label: ${s.gmailLabels.join(", ")}`);
   if (s.slackChannels?.length) out.push(`channel: ${s.slackChannels.join(", ")}`);
   if (s.vendors?.length) out.push(`vendors: ${s.vendors.join(", ")}`);
+  if (s.repos?.length) out.push(`repo: ${s.repos.join(", ")}`);
+  if (s.chats?.length) out.push(`chat: ${s.chats.join(", ")}`);
+  if (s.databases?.length) out.push(`database: ${s.databases.join(", ")}`);
+  if (s.clusters?.length) out.push(`cluster: ${s.clusters.join(", ")}`);
   return out;
 }

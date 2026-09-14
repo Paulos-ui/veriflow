@@ -163,6 +163,53 @@ export function enforce(req: CallRequest, tool: GateToolFacts | undefined): Ruli
     }
   }
 
+  // The Arena's four destinations. Same fail-closed shape as the four above: a
+  // mandate silent on repositories authorises writing to no repository, which is
+  // what makes "opens issues on one allowlisted repo" a checked claim rather
+  // than a sentence in a charter.
+  if (d.repo !== undefined) {
+    const allowed = allowlist(s.repos);
+    if (!allowed.some((r) => sameRepo(r, d.repo!))) {
+      return deny("scope_mismatch", `${d.repo} is outside the mandate's repository scope.`, {
+        evidence: { label: "Allowed repos", allowed: fmtList(allowed), attempted: d.repo },
+        remedy: "Set GITHUB_OWNER and GITHUB_REPO to the repository you mean.",
+      });
+    }
+  }
+
+  if (d.chat !== undefined) {
+    const allowed = allowlist(s.chats);
+    if (!allowed.includes(d.chat)) {
+      return deny("scope_mismatch", "That chat is outside the mandate's Telegram scope.", {
+        evidence: { label: "Allowed chats", allowed: fmtList(allowed), attempted: d.chat },
+        remedy: "Mandates pin chat ids, not usernames — check TELEGRAM_CHAT_ID.",
+      });
+    }
+  }
+
+  if (d.database !== undefined) {
+    const allowed = allowlist(s.databases);
+    if (!allowed.includes(d.database)) {
+      return deny("scope_mismatch", "That database is outside the mandate's Notion scope.", {
+        evidence: { label: "Allowed databases", allowed: fmtList(allowed), attempted: d.database },
+        remedy: "Check NOTION_DATABASE_ID against the database you shared with the integration.",
+      });
+    }
+  }
+
+  if (d.cluster !== undefined) {
+    const allowed = allowlist(s.clusters);
+    if (!allowed.includes(d.cluster)) {
+      // The arm that stops a mainnet broadcast. `mainnet-beta` is not in any
+      // mandate this codebase issues, so reaching for it is refused here rather
+      // than being prevented by whoever remembers to check the RPC URL.
+      return deny("scope_mismatch", `${d.cluster} is not a cluster this agent may broadcast to.`, {
+        evidence: { label: "Allowed clusters", allowed: fmtList(allowed), attempted: d.cluster },
+        remedy: "VeriFlow anchors on devnet. Point SOLANA_RPC_URL at a devnet endpoint.",
+      });
+    }
+  }
+
   // --- 6. cap ----------------------------------------------------------------
   // Strictly greater than. A call for exactly the cap is inside authority; one
   // cent over is not. The deny-path suite pins both sides of that boundary.
@@ -234,6 +281,11 @@ function bareAddress(v: string): string {
 
 /** Vendor names arrive from a model, so compare without case or padding. */
 function sameVendor(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+/** GitHub owners and repository names are case-insensitive. Slashes are not. */
+function sameRepo(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 

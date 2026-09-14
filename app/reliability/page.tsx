@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ROSTER } from "@/lib/agents/roster";
+import { TOOL_NAMES } from "@/lib/tools/registry";
 
 export const metadata: Metadata = {
   title: "Reliability — VeriFlow",
@@ -14,6 +16,13 @@ export const metadata: Metadata = {
 // scrolling twice. This is the one surface in the product where a scannable
 // table beats prose.
 // =============================================================================
+
+/**
+ * Distinct external apps the system can reach, derived from the tool registry
+ * rather than counted by hand — `gmail.find_invoice` and `gmail.fetch_attachment`
+ * are two tools against one app, and the number readers care about is the app.
+ */
+const APPS: string[] = [...new Set(TOOL_NAMES.map((n) => n.split(".")[0]))];
 
 /** The gate's refusal order, mirroring lib/mandate/enforce.ts top to bottom. */
 const GATE: [string, string][] = [
@@ -103,16 +112,18 @@ export default function ReliabilityPage() {
           </h1>
           <p className="mt-5 max-w-2xl leading-relaxed text-muted">
             Written to be read in under a minute. The short answer: one server-side
-            gate that every tool call passes through, four agents that hold different
+            gate that every tool call passes through, eight agents that hold different
             credentials, and a hash chain that records the refusals as carefully as the
             successes.
           </p>
           <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4">
             {[
               ["Enforcement points", "1"],
-              ["Agents / keys", "4"],
+              // Counted from the roster rather than typed, so the number on the
+              // page cannot fall behind the number of principals that exist.
+              ["Agents / keys", String(Object.keys(ROSTER).length)],
               ["Refusal kinds", String(GATE.length)],
-              ["Tests", "105"],
+              ["Apps reachable", String(APPS.length)],
             ].map(([k, v]) => (
               <div key={k}>
                 <dt className="eyebrow">{k}</dt>

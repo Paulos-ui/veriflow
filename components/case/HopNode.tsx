@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import type { TimelineStep } from "@/lib/cases/view";
 import { shortHash } from "@/lib/cases/view";
+import type { Provenance as HopProvenance } from "@/lib/tools/types";
 
 // =============================================================================
 // Hop node — MASTER.md §5.2.
@@ -12,11 +13,14 @@ import { shortHash } from "@/lib/cases/view";
 //
 //   verified   ●──   closed dot, solid connector
 //   awaiting   ◌┈┈   dashed ring, dashed connector
-//   refused    ◑ ╳   half ring, connector TERMINATES in a cross
+//   refused    ◑ ╳   half ring, connector TERMINATES in a cross — when fatal
+//   skipped    –──   struck ring, connector CONTINUES: the chain stepped over it
 //   unreached  ○     hollow, no connector drawn forward
 //
-// The refused connector does not continue. An operator scanning the column
-// should see the chain break before reading a single word.
+// A fatal refusal breaks the connector, and an operator scanning the column
+// should see the chain break before reading a single word. A refusal the spine
+// records and steps over does NOT break it — one unreachable integration is not
+// the end of the run, and drawing it as one would be a lie told in geometry.
 // =============================================================================
 
 type NodeState = TimelineStep["state"];
@@ -25,14 +29,36 @@ const MARK: Record<NodeState, { glyph: string; ring: string; text: string }> = {
   verified: { glyph: "●", ring: "border-verdigris bg-verdigris/10", text: "text-verdigris" },
   awaiting: { glyph: "◌", ring: "border-amber bg-amber/10", text: "text-amber" },
   refused: { glyph: "◑", ring: "border-alert bg-alert/10", text: "text-alert" },
+  skipped: { glyph: "–", ring: "border-hairline bg-bone/[0.03]", text: "text-muted" },
   unreached: { glyph: "○", ring: "border-hairline bg-transparent", text: "text-faint" },
+};
+
+/** A step the plan wanted and could not have reads louder than one it declined. */
+const UNCONFIGURED_MARK = {
+  glyph: "–",
+  ring: "border-amber/35 bg-amber/[0.06]",
+  text: "text-amber",
 };
 
 const STATE_WORD: Record<NodeState, string> = {
   verified: "Verified",
   awaiting: "Awaiting",
   refused: "Refused",
+  skipped: "Not needed",
   unreached: "Not reached",
+};
+
+/**
+ * What the tool line says when a hop named no tool. "Reasoning only" is a claim
+ * about work that happened; a skipped step did none, so it must not borrow that
+ * phrase to look busier than it was.
+ */
+const TOOLLESS: Record<NodeState, string> = {
+  verified: "reasoning only",
+  awaiting: "reasoning only",
+  refused: "reasoning only",
+  skipped: "no call made",
+  unreached: "not reached",
 };
 
 export function HopNode({
@@ -48,11 +74,15 @@ export function HopNode({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const mark = MARK[step.state];
   const { hop } = step;
+  const unconfigured = step.state === "skipped" && hop?.skipReason === "unconfigured";
 
-  // A refused hop ends the chain; an unreached step has nothing to connect to.
-  const connectorDraws = !isLast && step.state !== "refused" && step.state !== "unreached";
+  const mark = unconfigured ? UNCONFIGURED_MARK : MARK[step.state];
+  const stateWord = unconfigured ? "Not configured" : STATE_WORD[step.state];
+
+  // The chain continues unless this hop ended it. A recorded refusal and a
+  // skipped step both keep drawing — the case went on past them.
+  const connectorDraws = !isLast && !step.terminal && step.state !== "unreached";
   const connectorDashed = step.state === "awaiting";
 
   // Nothing to open on a step that never ran.
@@ -96,7 +126,7 @@ export function HopNode({
 
         {/* The chain stopped here: a cross across the rail where the connector
             would have continued. Drawn, not implied by absence. */}
-        {step.state === "refused" && !isLast && (
+        {step.terminal && !isLast && (
           <span
             aria-hidden
             className="absolute left-1/2 top-[42px] -translate-x-1/2 font-mono text-[12px] leading-none text-alert"
@@ -112,7 +142,7 @@ export function HopNode({
           <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
             <span className="font-display text-[15px] leading-none text-bone">{step.label}</span>
             <span className={cn("font-mono text-[10.5px] uppercase tracking-[0.14em]", mark.text)}>
-              {STATE_WORD[step.state]}
+              {stateWord}
             </span>
           </span>
 
@@ -122,7 +152,7 @@ export function HopNode({
               ·
             </span>
             <span className="crypto min-w-0 truncate text-[11.5px] text-muted">
-              {hop?.tool ?? (step.state === "unreached" ? "not reached" : "reasoning only")}
+              {hop?.tool ?? TOOLLESS[step.state]}
             </span>
           </span>
 
@@ -198,9 +228,12 @@ function Shell({
 }
 
 /** Live vs recorded, on the hop itself (MASTER.md §8). */
-function Provenance({ kind }: { kind: "live" | "fixture" | "simulated" }) {
+function Provenance({ kind }: { kind: HopProvenance }) {
   const map = {
     live: { label: "Live", glyph: "◆", cls: "text-verdigris border-verdigris/35 bg-verdigris/[0.07]" },
+    // Our code, the operator's data. Not as strong a claim as `live`, and a much
+    // stronger one than `fixture` — which is why it gets its own badge.
+    derived: { label: "Derived", glyph: "◇", cls: "text-bone/70 border-hairline bg-bone/[0.05]" },
     fixture: { label: "Fixture", glyph: "◇", cls: "text-muted border-hairline bg-bone/[0.03]" },
     simulated: { label: "Simulated", glyph: "◈", cls: "text-amber border-amber/30 bg-amber/[0.06]" },
   }[kind];
